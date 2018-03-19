@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="../css/easyui.css">
+    <link rel="stylesheet" type="text/css" href="../css/icon.css">
+    <script src="../js/jquery.min-1.11.1.js"></script>
+    <script src="../js/jquery.easyui.min.js"></script>
+    <script src="../js/easyui-lang-zh_CN.js"></script>
+    <script type="text/javascript" charset="utf-8">
+
+        var checkedValue = "";
+        var unCheckValue = "";
+        var dg;
+        $(function () {
+            $('#dialog').dialog('close');
+            var cacheData = [
+                {"itemid": "1", "productid": "2", "listprice": "30", "unitcost": "2.3", "attr1": "kdkkd", "status": "ok"},
+                {"itemid": "2", "productid": "5", "listprice": "67", "unitcost": "4.5", "attr1": "ewe", "status": "wrong"}
+            ];
+            $('#tt').datagrid({
+                title: "DataGrid - DetailView",
+                width: 500,
+                height: 250,
+                remoteSort: false,
+                singleSelect: true,
+                nowrap: false,
+                fitColumns: true,
+                url: '',
+                columns: [
+                    [
+                        {field: 'itemid', title: 'Item ID', width: 80},
+                        {field: 'productid', title: 'Product ID', width: 100, sortable: true},
+                        {field: 'listprice', title: 'List Price', width: 80, align: 'right', sortable: true},
+                        {field: 'unitcost', title: 'Unit Cost', width: 80, align: 'right', sortable: true},
+                        {field: 'attr1', title: 'Attribute', width: 150, sortable: true},
+                        {field: 'status', title: 'Status', width: 60, align: 'center'}
+                    ]
+                ],
+                data: cacheData,
+                onRowContextMenu:function(e, rowIndex, rowData){
+                    e.preventDefault();
+
+                    $(this).datagrid("unselectAll");
+
+                    $(this).datagrid("selectRow", rowIndex);
+
+                    $("#corp-menu").menu("show",{
+                        left:event.pageX,
+                        top:event.pageY
+                    });
+                }
+            }).datagrid("columnMoving");
+            // 获取title
+//            $("div[class*=datagrid] div[class=panel-title]").append('<div style="float: right"><a href="#" class="easyui-linkbutton" onclick="changeColumn();">列调整</a></div>');
+            dg = $('#tt');
+            var oldTitle = dg.datagrid('options').title;
+            var newTitel = oldTitle + '<div style="float: right"><a href="#" class="easyui-linkbutton" onclick="changeColumn();">列调整</a></div>';
+            dg.datagrid("getPanel").panel("setTitle", newTitel);
+            initHideColumn();
+        });
+
+        // 初始化隐藏列
+        function initHideColumn() {
+
+        }
+
+        // 打开隐藏列窗口
+        function changeColumn() {
+            var changeHtml = '';
+            var opts = dg.datagrid('getColumnFields');
+            for (var i = 0; i < opts.length; i++) {
+                var colName = dg.datagrid("getColumnOption", opts[i]);
+                if (checkedValue.indexOf(opts[i]) == -1) {
+                    changeHtml = changeHtml + '<input type="checkbox" name="' + opts[i] + '" value="' + opts[i] + '"/>' + colName.title + '</br>';
+                } else {
+                    changeHtml = changeHtml + '<input type="checkbox" name="' + opts[i] + '" value="' + opts[i] + '" checked/>' + colName.title + '</br>';
+                }
+            }
+            $("#changeContent").html(changeHtml);
+            $('#dialog').dialog('open');
+        }
+
+        // 保存并隐藏列
+        function saveChange() {
+            var cbx = $("#changeContent input[type='checkbox']"); //获取里面是checkbox的Object
+            checkedValue = "";
+            unCheckValue = "";
+            for (var i = 0; i < cbx.length; i++) {
+                if (cbx[i].checked) {//获取已经checked的Object
+                    if (checkedValue.length > 0) {
+                        checkedValue += "," + cbx[i].value; //获取已经checked的value
+                    }
+                    else {
+                        checkedValue = cbx[i].value;
+                    }
+                }
+                if (!cbx[i].checked) {//获取没有checked的Object
+                    if (unCheckValue.length > 0) {
+                        unCheckValue += "," + cbx[i].value; //获取没有checked的value
+                    }
+                    else {
+                        unCheckValue = cbx[i].value;
+                    }
+                }
+            }
+            doChange(checkedValue, unCheckValue);
+            $('#dialog').dialog('close');
+        }
+
+        function doChange(checkedValue, unCheckValue) {
+            var checkeds = [];
+            if (checkedValue != null && checkedValue != "") {
+                checkeds = checkedValue.split(',');
+                for (var i = 0; i < checkeds.length; i++) {
+                    dg.datagrid('hideColumn', checkeds[i]); //隐藏相应的列
+                }
+            }
+            var unChecks = [];
+            if (unCheckValue != null && unCheckValue != "") {
+                unChecks = unCheckValue.split(',');
+                for (var i = 0; i < unChecks.length; i++) {
+                    dg.datagrid('showColumn', unChecks[i]); //显示相应的列
+                }
+            }
+        }
+
+        // 列排序相关
+        $.extend($.fn.datagrid.methods,{
+            columnMoving:function(jq){
+                return jq.each(function(){
+                    var grid = this;
+
+                    var directionDiv = $("<div></div>");
+
+                    directionDiv.hide();
+
+                    $("body").append(directionDiv);
+
+                    $(grid).datagrid("getPanel")
+                            .find(".datagrid-header td[field]:not(td[field='ckb'])").draggable({
+                                revert:true,
+                                cursor:"move",
+                                deltaX:10,
+                                deltaY:10,
+                                edge:10,
+                                proxy:function(source){
+                                    var proxyEl = $("<div></div>");
+
+                                    proxyEl.addClass("dg-proxy dg-proxy-error");
+
+                                    proxyEl.text($(source).text());
+
+                                    proxyEl.appendTo($("body"));
+
+                                    return proxyEl;
+                                }
+                            }).droppable({
+                                accept:".datagrid-header td[field]",
+                                onDragOver:function(e,source){
+                                    $(source).draggable("proxy").removeClass("dg-proxy-error").addClass("dg-proxy-right");
+
+                                    $(".dg-hide-div").hide();
+
+                                    var thisIndex = $(this).index();
+                                    var sourceIndex = $(source).index();
+
+                                    var className = null;
+
+                                    var height = null;
+
+                                    var thisOffset = null;
+
+                                    var left = null;
+                                    var top = null;
+
+                                    height = $(this).height();
+
+                                    if(sourceIndex > thisIndex){
+                                        className = "dg-move-prev";
+
+                                        thisOffset = $(this).offset();
+
+                                        left = thisOffset.left;
+                                        top = thisOffset.top;
+                                    }else{
+                                        className = "dg-move-next";
+
+                                        if(thisIndex == $(this).parent().children(":last").index()){
+                                            thisOffset = $(this).offset();
+
+                                            left = thisOffset.left + $(this).width() - directionDiv.width();
+                                            top = thisOffset.top;
+                                        }else{
+                                            thisOffset = $(this).next().offset();
+
+                                            left = thisOffset.left - directionDiv.width();
+                                            top = thisOffset.top;
+                                        }
+                                    }
+
+                                    directionDiv.removeClass().addClass(className);
+                                    directionDiv.css({height:height, left:left, top:top});
+                                    directionDiv.show();
+                                },
+                                onDragLeave:function(e,source){
+                                    $(source).draggable("proxy").removeClass("dg-proxy-right").addClass("dg-proxy-error");
+
+                                    directionDiv.hide();
+                                },
+                                onDrop:function(e,source){
+                                    directionDiv.remove();
+
+                                    var thisIndex = $(this).index();
+                                    var sourceIndex = $(source).index();
+
+                                    var sourceCol = new Array();
+
+                                    $(source).remove();
+                                    $.each($(grid).datagrid("getPanel")
+                                            .find(".datagrid-body tr"),function(index,obj){
+                                        var sourceTd = $(obj).children("td:eq(" + sourceIndex + ")");
+
+                                        sourceCol.push(sourceTd);
+
+                                        sourceTd.remove();
+                                    });
+
+                                    var prev = sourceIndex > thisIndex;
+
+                                    thisIndex = $(this).index();
+
+                                    if(prev){
+                                        $(this).before($(source));
+                                    }else{
+                                        $(this).after($(source));
+                                    }
+
+                                    $.each($(grid).datagrid("getPanel")
+                                            .find(".datagrid-body tr"),function(index,obj){
+                                        var thisTd = $(obj).children("td:eq(" + thisIndex + ")");
+
+                                        if(prev){
+                                            thisTd.before(sourceCol[index]);
+                                        }else{
+                                            thisTd.after(sourceCol[index]);
+                                        }
+                                    });
+
+                                    $(grid).datagrid("columnMoving").datagrid("columnHiding");
+                                }
+                            });
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+<table id="tt"></table>
+<div id="dialog" class="easyui-dialog" title="选择隐藏列" style="width:400px;height:200px;"
+     data-options="iconCls:'icon-save',resizable:true,modal:true">
+    <div id="changeContent"></div>
+    <div style="margin-top: 5px">
+        <a href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-save',plain:true"
+           onclick="saveChange();">保存</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true"
+           onclick="$('#dialog').dialog('close')">取消</a>
+    </div>
+</div>
+</body>
+</html>
